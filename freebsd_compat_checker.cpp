@@ -122,8 +122,8 @@ public:
         }
 
         overall_percent = (total_weight > 0.0)
-        ? (weighted / total_weight) * 100.0
-        : 0.0;
+            ? (weighted / total_weight) * 100.0
+            : 0.0;
     }
 };
 
@@ -262,19 +262,19 @@ public:
             it.detail = std::format("{} | {} logical cores | architecture: {}",
                                     is_intel ? "Intel" : "AMD", core_count, arch);
             it.recommendation = "FreeBSD 15.1 has mature, first-class support for x86_64. "
-            "No CPU-related migration concerns expected.";
+                                 "No CPU-related migration concerns expected.";
         } else if (arch.rfind("aarch64", 0) == 0 || arch.rfind("arm", 0) == 0) {
             it.score = CompatScore::MAYBE;
             it.detail = std::format("ARM architecture detected: {} | {} logical cores", arch, core_count);
             it.recommendation = "FreeBSD's ARM64 (aarch64) support exists but is considerably "
-            "less mature than its x86_64 support. Expect missing packages "
-            "and rougher edges on ARM hardware.";
+                                 "less mature than its x86_64 support. Expect missing packages "
+                                 "and rougher edges on ARM hardware.";
         } else {
             it.score = CompatScore::MAYBE;
             it.detail = std::format("Uncommon architecture: {} | vendor: {}", arch, vendor);
             it.recommendation = "This architecture is not among FreeBSD's primary supported "
-            "targets. Check the FreeBSD Handbook for current platform support "
-            "before migrating.";
+                                 "targets. Check the FreeBSD Handbook for current platform support "
+                                 "before migrating.";
         }
     }
 };
@@ -299,14 +299,14 @@ public:
         if (total_mb < 2048) {
             it.score  = CompatScore::NONE;
             it.detail = std::format("Only {} MB RAM detected -- FreeBSD desktop use (KDE Plasma, "
-            "GNOME) generally wants at least 2-4 GB.", total_mb);
+                                    "GNOME) generally wants at least 2-4 GB.", total_mb);
             it.recommendation = "Consider a lightweight window manager instead of a full desktop "
-            "environment, or add more RAM before migrating.";
+                                 "environment, or add more RAM before migrating.";
         } else if (total_mb < 4096) {
             it.score  = CompatScore::MINOR;
             it.detail = std::format("{} MB RAM -- sufficient for basic desktop use.", total_mb);
             it.recommendation = "A lightweight desktop (Xfce, LXQt) will feel more comfortable "
-            "than KDE Plasma or GNOME at this memory size.";
+                                 "than KDE Plasma or GNOME at this memory size.";
         } else {
             it.score  = CompatScore::FULL;
             it.detail = std::format("{} MB ({} GB) RAM -- comfortable for any desktop environment.",
@@ -327,9 +327,9 @@ public:
         if (statvfs("/", &vfs) == 0) {
             const unsigned long long block = vfs.f_frsize ? vfs.f_frsize : vfs.f_bsize;
             total_gb = (static_cast<unsigned long long>(vfs.f_blocks) * block)
-            / (1024ULL * 1024 * 1024);
+                     / (1024ULL * 1024 * 1024);
             free_gb  = (static_cast<unsigned long long>(vfs.f_bavail) * block)
-            / (1024ULL * 1024 * 1024);
+                     / (1024ULL * 1024 * 1024);
         }
 
         std::string root_device;
@@ -344,8 +344,9 @@ public:
                     fields.push_back(field);
 
                 const auto sep = std::find(fields.begin(), fields.end(), "-");
-                if (sep == fields.end() || sep + 2 >= fields.end())
+                if (sep == fields.end() || sep + 2 >= fields.end()) {
                     continue;
+                }
 
                 // Mount point is field 5 (1-based) in /proc/self/mountinfo.
                 if (fields.size() > 4 && fields[4] == "/") {
@@ -395,47 +396,49 @@ public:
                 unsigned long long start{};
                 unsigned long long size{};
             };
-        std::vector<PartitionRange> parts;
+            std::vector<PartitionRange> parts;
 
-        std::error_code ec;
-        const fs::path block_dir = "/sys/block/" + base;
-        for (const auto& entry : fs::directory_iterator(block_dir, ec)) {
-            if (ec) break;
-            if (!fs::exists(entry.path() / "partition", ec))
-                continue;
-
-            unsigned long long start_sector = 0;
-            unsigned long long size_sector = 0;
-            if (SysFs::read_uint64(entry.path() / "start", start_sector) &&
-                SysFs::read_uint64(entry.path() / "size", size_sector) &&
-                start_sector < disk_sectors) {
-                const auto clipped = std::min(size_sector, disk_sectors - start_sector);
-            if (clipped)
-                parts.push_back({start_sector, clipped});
+            std::error_code ec;
+            const fs::path block_dir = "/sys/block/" + base;
+            for (const auto& entry : fs::directory_iterator(block_dir, ec)) {
+                if (ec) break;
+                if (!fs::exists(entry.path() / "partition", ec)) {
+                    continue;
                 }
-        }
 
-        std::sort(parts.begin(), parts.end(),
-                  [](const PartitionRange& a, const PartitionRange& b) {
-                      return a.start < b.start;
-                  });
-
-        unsigned long long cursor = 0;
-        for (const auto& part : parts) {
-            if (part.start > cursor)
-                largest_gap_sectors = std::max(largest_gap_sectors, part.start - cursor);
-            cursor = std::max(cursor, part.start + part.size);
-        }
-        if (cursor < disk_sectors)
-            largest_gap_sectors = std::max(largest_gap_sectors, disk_sectors - cursor);
-
-            unallocated_known = true;
+                unsigned long long start_sector = 0;
+                unsigned long long size_sector = 0;
+                if (SysFs::read_uint64(entry.path() / "start", start_sector) &&
+                    SysFs::read_uint64(entry.path() / "size", size_sector) &&
+                    start_sector < disk_sectors) {
+                    const auto clipped = std::min(size_sector, disk_sectors - start_sector);
+                    if (clipped)
+                        parts.push_back({start_sector, clipped});
+                }
             }
 
-            const unsigned long long largest_gap_gb =
+            std::sort(parts.begin(), parts.end(),
+                      [](const PartitionRange& a, const PartitionRange& b) {
+                          return a.start < b.start;
+                      });
+
+            unsigned long long cursor = 0;
+            for (const auto& part : parts) {
+                if (part.start > cursor)
+                    largest_gap_sectors = std::max(largest_gap_sectors, part.start - cursor);
+                cursor = std::max(cursor, part.start + part.size);
+            }
+            if (cursor < disk_sectors) {
+                largest_gap_sectors = std::max(largest_gap_sectors, disk_sectors - cursor);
+            }
+
+            unallocated_known = true;
+        }
+
+        const unsigned long long largest_gap_gb =
             largest_gap_sectors / (1024ULL * 1024 * 2); // 512-byte sectors -> GiB
 
-            const char* drive_type =
+        const char* drive_type =
             is_nvme ? "NVMe SSD" : is_ssd ? "SSD" : direct_block_device ? "Rotational (HDD)" : "Unknown";
 
         /* ---------------------------------------------------------------
@@ -457,18 +460,18 @@ public:
                 it.score = CompatScore::FULL;
                 it.detail = "NVMe storage controller.";
                 it.recommendation = "Natively supported by FreeBSD's nvme(4) driver. "
-                "ZFS or UFS are both good filesystem choices on NVMe.";
+                                     "ZFS or UFS are both good filesystem choices on NVMe.";
             } else if (direct_block_device) {
                 it.score = CompatScore::FULL;
                 it.detail = std::format("{} storage device (SATA/AHCI-class).", drive_type);
                 it.recommendation = "Natively supported by FreeBSD's ahci(4)/ada(4) drivers. "
-                "No storage-hardware migration concerns.";
+                                     "No storage-hardware migration concerns.";
             } else {
                 it.score = CompatScore::MAYBE;
                 it.detail = "Could not determine the backing storage device type "
-                "(possibly LVM, dm-crypt, RAID, or a network filesystem).";
+                             "(possibly LVM, dm-crypt, RAID, or a network filesystem).";
                 it.recommendation = "Check the underlying physical storage hardware manually; "
-                "layered storage (LVM/RAID/encryption) needs separate inspection.";
+                                     "layered storage (LVM/RAID/encryption) needs separate inspection.";
             }
         }
 
@@ -498,29 +501,29 @@ public:
                 if (largest_gap_gb >= 50) {
                     it.score = CompatScore::FULL;
                     it.recommendation =
-                    "At least 50 GiB of unpartitioned space is already available for a "
-                    "comfortable FreeBSD desktop installation.";
+                        "At least 50 GiB of unpartitioned space is already available for a "
+                        "comfortable FreeBSD desktop installation.";
                 } else if (largest_gap_gb >= 20) {
                     it.score = CompatScore::MINOR;
                     it.recommendation =
-                    "At least 20 GiB of unpartitioned space is visible, enough for a basic "
-                    "install; 50+ GiB is preferable for a full desktop.";
+                        "At least 20 GiB of unpartitioned space is visible, enough for a basic "
+                        "install; 50+ GiB is preferable for a full desktop.";
                 } else {
                     it.score = CompatScore::MINOR;
                     it.recommendation =
-                    "No 20+ GiB unpartitioned gap was detected right now. This does not mean "
-                    "the hardware is incompatible -- it means you'll need to shrink an existing "
-                    "partition, free up space, or use another disk before installing.";
+                        "No 20+ GiB unpartitioned gap was detected right now. This does not mean "
+                        "the hardware is incompatible -- it means you'll need to shrink an existing "
+                        "partition, free up space, or use another disk before installing.";
                 }
             } else {
                 it.score = CompatScore::MAYBE;
                 it.detail = std::format(
                     "Root filesystem reports {} GB free, but unpartitioned disk space could not be "
                     "safely determined (backing device: {}).",
-                                        free_gb, root_device.empty() ? "unknown" : root_device);
+                    free_gb, root_device.empty() ? "unknown" : root_device);
                 it.recommendation =
-                "Check the partition table manually before installing FreeBSD. LVM, dm-crypt, "
-                "RAID, and other layered storage need separate inspection.";
+                    "Check the partition table manually before installing FreeBSD. LVM, dm-crypt, "
+                    "RAID, and other layered storage need separate inspection.";
             }
         }
     }
@@ -535,13 +538,15 @@ public:
         bool found = false;
         int gpu_count = 0;
 
-        if (!fs::exists("/sys/bus/pci/devices"))
+        if (!fs::exists("/sys/bus/pci/devices")) {
             return;
+        }
 
         for (const auto& entry : fs::directory_iterator("/sys/bus/pci/devices")) {
             const auto class_str = SysFs::read_first_line(entry.path() / "class");
-            if (!class_str || class_str->rfind("0x03", 0) != 0)
+            if (!class_str || class_str->rfind("0x03", 0) != 0) {
                 continue;
+            }
 
             const auto vendor_str = SysFs::read_first_line(entry.path() / "vendor").value_or("");
             const auto device_str = SysFs::read_first_line(entry.path() / "device").value_or("");
@@ -567,29 +572,29 @@ public:
                 it.score = CompatScore::MINOR;
                 it.detail = "Intel graphics device detected.";
                 it.recommendation =
-                "FreeBSD 15.1 uses drm-kmod/i915kms for supported Intel generations. "
-                "FreeBSD's current DRM status notes that i915 still has instabilities, so "
-                "this should be treated as supported but not risk-free. Verify the exact GPU "
-                "ID and required firmware before migrating.";
+                    "FreeBSD 15.1 uses drm-kmod/i915kms for supported Intel generations. "
+                    "FreeBSD's current DRM status notes that i915 still has instabilities, so "
+                    "this should be treated as supported but not risk-free. Verify the exact GPU "
+                    "ID and required firmware before migrating.";
             } else if (is_amd) {
                 it.score = CompatScore::MINOR;
                 it.detail = "AMD graphics device detected.";
                 it.recommendation =
-                "FreeBSD provides amdgpu through drm-kmod. Exact GPU generation should be "
-                "checked against the current FreeBSD graphics support matrix.";
+                    "FreeBSD provides amdgpu through drm-kmod. Exact GPU generation should be "
+                    "checked against the current FreeBSD graphics support matrix.";
             } else if (is_nvidia) {
                 it.score = CompatScore::MAYBE;
                 it.detail = "NVIDIA graphics device detected.";
                 it.recommendation =
-                "FreeBSD's NVIDIA stack is proprietary. The current Handbook says the NVIDIA "
-                "driver can work with many wlroots compositors but may be unstable and may "
-                "lack some features. On hybrid laptops, using the supported integrated GPU "
-                "as the primary desktop GPU is the lower-risk approach.";
+                    "FreeBSD's NVIDIA stack is proprietary. The current Handbook says the NVIDIA "
+                    "driver can work with many wlroots compositors but may be unstable and may "
+                    "lack some features. On hybrid laptops, using the supported integrated GPU "
+                    "as the primary desktop GPU is the lower-risk approach.";
             } else {
                 it.score = CompatScore::MAYBE;
                 it.detail = "Unrecognized PCI display vendor.";
                 it.recommendation =
-                "Check the exact PCI device against FreeBSD's current graphics support before migrating.";
+                    "Check the exact PCI device against FreeBSD's current graphics support before migrating.";
             }
         }
 
@@ -602,7 +607,7 @@ public:
             itp->score = CompatScore::MAYBE;
             itp->detail = "Could not enumerate a display controller via /sys/bus/pci/devices.";
             itp->recommendation =
-            "This may be a virtual machine or an unusual setup; verify manually.";
+                "This may be a virtual machine or an unusual setup; verify manually.";
         } else if (gpu_count > 1) {
             CompatItem* itp = new_item(report);
             if (!itp) return;
@@ -611,10 +616,10 @@ public:
             itp->critical = false;
             itp->score = CompatScore::MINOR;
             itp->detail =
-            "Multiple display controllers were detected. Linux GPU-driver bindings do not "
-            "guarantee identical offload, power-management, or suspend behavior on FreeBSD.";
+                "Multiple display controllers were detected. Linux GPU-driver bindings do not "
+                "guarantee identical offload, power-management, or suspend behavior on FreeBSD.";
             itp->recommendation =
-            "Validate the primary GPU first, then test graphics offload and suspend/resume separately.";
+                "Validate the primary GPU first, then test graphics offload and suspend/resume separately.";
         }
     }
 };
@@ -638,7 +643,7 @@ public:
 
             const auto driver = SysFs::driver_name_for(device_dir).value_or("unknown");
             const bool is_wireless = fs::exists(entry.path() / "wireless")
-            || fs::exists(entry.path() / "phy80211");
+                                   || fs::exists(entry.path() / "phy80211");
 
             found = true;
             CompatItem* itp = new_item(report);
@@ -662,8 +667,8 @@ public:
                 it.score  = CompatScore::MINOR;
                 it.detail = "Intel Wi-Fi adapter (Linux driver: iwlwifi).";
                 it.recommendation = "FreeBSD's iwlwifi(4) port supports many Intel Wi-Fi chips, but "
-                "firmware/chip support can lag behind Linux for the newest cards. "
-                "Check the FreeBSD wiki's supported-chipset list for your exact model.";
+                                     "firmware/chip support can lag behind Linux for the newest cards. "
+                                     "Check the FreeBSD wiki's supported-chipset list for your exact model.";
             } else if (is_atheros) {
                 it.score  = CompatScore::FULL;
                 it.detail = "Atheros Wi-Fi adapter.";
@@ -672,8 +677,8 @@ public:
                 it.score  = CompatScore::MAYBE;
                 it.detail = std::format("Realtek {} adapter.", is_wireless ? "Wi-Fi" : "Ethernet");
                 it.recommendation = is_wireless
-                ? "Realtek Wi-Fi chip support on FreeBSD is inconsistent; many newer chips have no driver at all. Verify your exact chip before migrating."
-                : "Realtek Ethernet (re(4)) generally works but has historically been less robust than Intel's drivers.";
+                    ? "Realtek Wi-Fi chip support on FreeBSD is inconsistent; many newer chips have no driver at all. Verify your exact chip before migrating."
+                    : "Realtek Ethernet (re(4)) generally works but has historically been less robust than Intel's drivers.";
             } else if (is_mediatek) {
                 it.score  = CompatScore::MAYBE;
                 it.detail = "MediaTek Wi-Fi adapter.";
@@ -745,12 +750,12 @@ public:
                 it.score  = CompatScore::MINOR;
                 it.detail = "Standard HD Audio (HDA) codec.";
                 it.recommendation = "FreeBSD's native sound(4)/hdac(4) driver generally handles HDA "
-                "audio, but community reports describe FreeBSD's audio stack as "
-                "still rough around the edges compared to Linux's ALSA/PipeWire "
-                "maturity. Installing pipewire + wireplumber on FreeBSD is "
-                "recommended for a more modern experience, and is required "
-                "specifically for Wayland screen capture (Spectacle, screen "
-                "sharing), not just audio.";
+                                     "audio, but community reports describe FreeBSD's audio stack as "
+                                     "still rough around the edges compared to Linux's ALSA/PipeWire "
+                                     "maturity. Installing pipewire + wireplumber on FreeBSD is "
+                                     "recommended for a more modern experience, and is required "
+                                     "specifically for Wayland screen capture (Spectacle, screen "
+                                     "sharing), not just audio.";
             } else {
                 it.score  = CompatScore::MAYBE;
                 it.detail = "Non-HDA audio device.";
@@ -800,8 +805,9 @@ public:
                 if (ec) break;
 
                 const auto filename = entry.path().filename().string();
-                if (filename.rfind("SecureBoot-", 0) != 0)
+                if (filename.rfind("SecureBoot-", 0) != 0) {
                     continue;
+                }
 
                 std::ifstream in(entry.path(), std::ios::binary);
                 if (!in) break;
@@ -824,8 +830,8 @@ public:
             it.detail = "UEFI was detected, but the SecureBoot EFI variable could not be read.";
         }
         it.recommendation =
-        "Secure Boot is treated as informational by this scanner rather than as a hardware "
-        "compatibility score.";
+            "Secure Boot is treated as informational by this scanner rather than as a hardware "
+            "compatibility score.";
     }
 };
 
@@ -847,12 +853,12 @@ public:
                 it.score  = CompatScore::FULL;
                 it.detail = "UEFI boot environment detected.";
                 it.recommendation = "FreeBSD 15.1 installs and boots cleanly in UEFI mode. "
-                "Make sure to select the UEFI installer image.";
+                                     "Make sure to select the UEFI installer image.";
             } else {
                 it.score  = CompatScore::MINOR;
                 it.detail = "Legacy BIOS boot environment detected.";
                 it.recommendation = "FreeBSD still supports legacy BIOS boot, but UEFI is the "
-                "better-tested, more actively maintained path.";
+                                     "better-tested, more actively maintained path.";
             }
         }
 
@@ -866,7 +872,7 @@ public:
             it.score    = CompatScore::FULL;
             it.detail   = has_tpm ? "TPM device node found." : "No TPM device detected.";
             it.recommendation = "TPM is not a hard requirement for FreeBSD; it can optionally be "
-            "used for disk encryption key storage if desired.";
+                                 "used for disk encryption key storage if desired.";
         }
     }
 };
@@ -894,10 +900,10 @@ public:
             it.critical = false;
             it.score    = CompatScore::MINOR;
             it.detail   = "A laptop battery was detected. Power management on FreeBSD differs "
-            "from Linux's kernel power framework.";
+                          "from Linux's kernel power framework.";
             it.recommendation = "Install powerd(8) (built into base) for basic CPU frequency "
-            "scaling, and check acpi_video(4)/backlight support for your "
-            "specific laptop model, since brightness-key behavior can vary.";
+                                 "scaling, and check acpi_video(4)/backlight support for your "
+                                 "specific laptop model, since brightness-key behavior can vary.";
             return;
         }
     }
@@ -931,9 +937,9 @@ public:
         it.score          = CompatScore::MINOR;
         it.detail         = "The CPU's hypervisor flag is set, meaning this scan itself is running inside a VM.";
         it.recommendation = "Results here reflect the virtual hardware, not physical hardware. "
-        "FreeBSD generally runs very well as a guest OS (bhyve, VirtualBox, "
-        "VMware, QEMU/KVM all have good support), but re-run this tool on "
-        "physical hardware for an accurate assessment of a bare-metal install.";
+                             "FreeBSD generally runs very well as a guest OS (bhyve, VirtualBox, "
+                             "VMware, QEMU/KVM all have good support), but re-run this tool on "
+                             "physical hardware for an accurate assessment of a bare-metal install.";
     }
 };
 
@@ -956,12 +962,12 @@ public:
             it.score  = CompatScore::FULL;
             it.detail = "At least one external IPv4 TCP/443 endpoint accepted a connection.";
             it.recommendation = "This only verifies basic outbound reachability. DNS, HTTPS, captive portals, "
-            "firewalls, and package-repository access still need to be tested after installation.";
+                                 "firewalls, and package-repository access still need to be tested after installation.";
         } else {
             it.score  = CompatScore::MINOR;
             it.detail = "No tested external IPv4 TCP/443 endpoint could be reached right now.";
             it.recommendation = "The network may be filtered, offline, or temporarily unavailable. "
-            "This result alone is not a FreeBSD hardware-compatibility failure.";
+                                 "This result alone is not a FreeBSD hardware-compatibility failure.";
         }
     }
 
